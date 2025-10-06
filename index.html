@@ -1,0 +1,219 @@
+# html-live-seluler
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML Live Editor (Mobile PWA)</title>
+  <meta name="theme-color" content="#00e5ff">
+  
+  <!-- Manifest inlined -->
+  <link rel="manifest" id="inlineManifest">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Fira Code", monospace;
+      background: #1e1e1e;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background: #121212;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #00e5ff;
+    }
+    #editor {
+      flex: 1;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: none;
+      resize: none;
+      outline: none;
+      background: #2d2d2d;
+      color: #00ff9d;
+      font-size: 14px;
+      line-height: 1.4;
+      overflow-y: auto;
+    }
+    #preview {
+      flex: 1;
+      background: #fff;
+      color: #000;
+      border-top: 2px solid #00e5ff;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    #buttons {
+      background: #121212;
+      padding: 8px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    button, label {
+      background: #00e5ff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #000;
+      text-align: center;
+    }
+    button:hover, label:hover { background: #00bcd4; }
+    input[type="file"] { display: none; }
+    @media (max-width: 768px) {
+      body { overflow-y: auto; }
+      #editor, #preview { height: 50vh; }
+    }
+  </style>
+</head>
+<body>
+  <header>HTML Live Editor (Mobile)</header>
+
+  <div id="buttons">
+    <button onclick="resetCode()">Reset</button>
+    <button onclick="clearStorage()">Hapus Simpanan</button>
+    <button onclick="exportCode()">Export .HTML</button>
+    <label for="fileInput">Import .HTML</label>
+    <input type="file" id="fileInput" accept=".html, text/html">
+  </div>
+
+  <textarea id="editor" placeholder="Tulis kode HTML di sini..."></textarea>
+  <iframe id="preview"></iframe>
+
+  <script>
+    // ====== Inline Manifest JSON ======
+    const manifestData = {
+      name: "HTML Live Editor Mobile",
+      short_name: "HTML Editor",
+      start_url: "./",
+      display: "standalone",
+      background_color: "#1e1e1e",
+      theme_color: "#00e5ff",
+      icons: [
+        {
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><rect width='512' height='512' fill='%2300e5ff'/><text x='50%' y='55%' font-size='180' fill='black' text-anchor='middle' font-family='Arial'>H</text></svg>",
+          sizes: "512x512",
+          type: "image/svg+xml"
+        }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    document.getElementById('inlineManifest').setAttribute('href', manifestURL);
+
+    // ====== HTML Editor Logic ======
+    const editor = document.getElementById("editor");
+    const preview = document.getElementById("preview");
+    const fileInput = document.getElementById("fileInput");
+    const STORAGE_KEY = "html_mobile_editor_code";
+
+    const defaultCode = `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contoh</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 0; }
+    nav { background: #2196f3; padding: 10px; }
+    nav ul { list-style: none; padding: 0; margin: 0; }
+    nav ul li { display: inline-block; margin: 0 10px; }
+    nav a { color: white; text-decoration: none; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="#">Beranda</a></li>
+      <li><a href="#">Produk</a></li>
+      <li><a href="#">Tentang</a></li>
+      <li><a href="#">Kontak</a></li>
+    </ul>
+  </nav>
+  <h1>Halo Dunia!</h1>
+  <p>Selamat datang di editor HTML mobile lengkap + mode offline.</p>
+</body>
+</html>`;
+
+    const savedCode = localStorage.getItem(STORAGE_KEY);
+    editor.value = savedCode || defaultCode;
+
+    function updatePreview() {
+      const code = editor.value;
+      const iframeDoc = preview.contentDocument || preview.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(code);
+      iframeDoc.close();
+    }
+
+    editor.addEventListener("input", () => {
+      updatePreview();
+      localStorage.setItem(STORAGE_KEY, editor.value);
+    });
+
+    function resetCode() {
+      editor.value = defaultCode;
+      updatePreview();
+      localStorage.setItem(STORAGE_KEY, defaultCode);
+    }
+
+    function clearStorage() {
+      localStorage.removeItem(STORAGE_KEY);
+      editor.value = defaultCode;
+      updatePreview();
+    }
+
+    function exportCode() {
+      const blob = new Blob([editor.value], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const fileName = prompt("Masukkan nama file:", "hasil-editor.html") || "hasil-editor.html";
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    fileInput.addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        editor.value = e.target.result;
+        updatePreview();
+        localStorage.setItem(STORAGE_KEY, editor.value);
+        alert("File berhasil dimuat ke editor!");
+      };
+      reader.readAsText(file);
+    });
+
+    updatePreview();
+
+    // ====== Inline Service Worker (Offline Support) ======
+    if ('serviceWorker' in navigator) {
+      const swBlob = new Blob([`
+        const CACHE_NAME = 'html-editor-pwa-cache-v1';
+        const FILES_TO_CACHE = ['.'];
+        self.addEventListener('install', (e) => {
+          e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(FILES_TO_CACHE)));
+        });
+        self.addEventListener('fetch', (e) => {
+          e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+        });
+      `], { type: 'application/javascript' });
+      const swURL = URL.createObjectURL(swBlob);
+      navigator.serviceWorker.register(swURL);
+    }
+  </script>
+</body>
+</html>
